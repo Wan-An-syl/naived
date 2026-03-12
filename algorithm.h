@@ -38,6 +38,7 @@ class TopKManager {
  private:
   std::size_t k_ = 0;
   std::unordered_map<std::string, Clique> best_by_signature_;
+  TopKBuffer q_;
 };
 
 class IncrementalEngine {
@@ -83,3 +84,4 @@ class RefinedIncrementalTopK {
 };
 
 }  // namespace temporal_topk
+
