@@ -90,6 +90,15 @@ std::vector<Clique> TopKManager::export_sorted() const {
   }
   return all;
 }
+TopKManager::TopKManager(std::size_t k) : q_(k) {}
+
+void TopKManager::consider(const Clique& c) {
+  if (q_.contains(c)) return;
+  if (q_.size() == q_.capacity() && c.score() <= q_.min_score()) return;
+  q_.push(c);
+}
+
+std::vector<Clique> TopKManager::export_sorted() const { return q_.sorted_descending(); }
 
 CliqueContainer IncrementalEngine::initialize(const GraphSnapshot& g0, TimeId t0) const {
   return BKMaximalCliqueEnumerator::run(g0, t0, 1);
@@ -263,3 +272,4 @@ std::vector<Clique> RefinedIncrementalTopK::run(const TemporalGraphDataset& data
 }
 
 }  // namespace temporal_topk
+
