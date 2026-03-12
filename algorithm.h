@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <unordered_map>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -48,6 +49,7 @@ class IncrementalEngine {
     CliqueContainer m_curr;
     std::unordered_set<std::string> p_set;
     std::vector<Clique> p_emitted;
+    std::unordered_map<std::string, int> prev_interval_updates;
   };
 
   CliqueContainer initialize(const GraphSnapshot& g0, TimeId t0 = 0) const;
@@ -65,6 +67,9 @@ class IncrementalEngine {
                                     const CliqueContainer& m_prev,
                                     std::unordered_set<std::string>& p_set,
                                     TimeId t,
+                                    std::vector<Clique>& p_emitted,
+                                    std::unordered_map<std::string, int>& prev_interval_updates)
+      const;
                                     std::vector<Clique>& p_emitted) const;
                                     TimeId t) const;
 

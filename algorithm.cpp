@@ -152,6 +152,19 @@ IncrementalEngine::StepResult IncrementalEngine::process_step(const GraphSnapsho
     ret.m_new = inc_rmce(curr, delta.added_edges, t);
   }
 
+  process_clique_relationships(ret.m_new, m_prev, ret.p_set, t, ret.p_emitted,
+                              ret.prev_interval_updates);
+
+  m_prev.for_each([&](const Clique& c) {
+    if (!InvalidationUtils::is_invalidated(c, curr, delta)) {
+      Clique updated = c;
+      const auto it = ret.prev_interval_updates.find(c.signature());
+      if (it != ret.prev_interval_updates.end()) {
+        updated.set_interval_count(it->second);
+        updated.last_seen_at = t;
+      }
+      ret.m_curr.add(std::move(updated));
+    }
   process_clique_relationships(ret.m_new, m_prev, ret.p_set, t, ret.p_emitted);
   ret.m_new = inc_rmce(curr, delta.added_edges, t);
 
@@ -170,6 +183,8 @@ void IncrementalEngine::process_clique_relationships(
     const CliqueContainer& m_prev,
     std::unordered_set<std::string>& p_set,
     TimeId t,
+    std::vector<Clique>& p_emitted,
+    std::unordered_map<std::string, int>& prev_interval_updates) const {
     std::vector<Clique>& p_emitted) const {
     TimeId t) const {
   m_new.for_each([&](Clique& c_new) {
@@ -196,6 +211,7 @@ void IncrementalEngine::process_clique_relationships(
         c_new.last_seen_at = t;
         p_set.insert(c_new.signature());
         p_set.insert(c_prev->signature());
+        prev_interval_updates[c_prev->signature()] = c_prev->interval_count + 1;
 
         Clique prev_updated = *c_prev;
         prev_updated.increment_interval_count(1);
