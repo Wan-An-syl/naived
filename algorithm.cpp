@@ -58,6 +58,38 @@ void BKMaximalCliqueEnumerator::bron_kerbosch(const GraphSnapshot& g,
   }
 }
 
+TopKManager::TopKManager(std::size_t k) : k_(k) {}
+
+void TopKManager::consider(const Clique& c) {
+  if (k_ == 0) return;
+
+  const auto sig = c.signature();
+  auto it = best_by_signature_.find(sig);
+  if (it == best_by_signature_.end()) {
+    best_by_signature_.emplace(sig, c);
+    return;
+  }
+
+  if (c.score() > it->second.score()) {
+    it->second = c;
+  }
+}
+
+std::vector<Clique> TopKManager::export_sorted() const {
+  std::vector<Clique> all;
+  all.reserve(best_by_signature_.size());
+  for (const auto& kv : best_by_signature_) {
+    all.push_back(kv.second);
+  }
+
+  std::sort(all.begin(), all.end(),
+            [](const Clique& a, const Clique& b) { return a.score() > b.score(); });
+
+  if (all.size() > k_) {
+    all.resize(k_);
+  }
+  return all;
+}
 TopKManager::TopKManager(std::size_t k) : q_(k) {}
 
 void TopKManager::consider(const Clique& c) {

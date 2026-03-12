@@ -36,6 +36,8 @@ class TopKManager {
   std::vector<Clique> export_sorted() const;
 
  private:
+  std::size_t k_ = 0;
+  std::unordered_map<std::string, Clique> best_by_signature_;
   TopKBuffer q_;
 };
 
