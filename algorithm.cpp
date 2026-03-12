@@ -91,12 +91,22 @@ std::vector<Clique> TopKManager::export_sorted() const {
               if (a.last_seen_at != b.last_seen_at) return a.last_seen_at < b.last_seen_at;
               return a.signature() > b.signature();
             });
+            [](const Clique& a, const Clique& b) { return a.score() > b.score(); });
 
   if (all.size() > k_) {
     all.resize(k_);
   }
   return all;
 }
+TopKManager::TopKManager(std::size_t k) : q_(k) {}
+
+void TopKManager::consider(const Clique& c) {
+  if (q_.contains(c)) return;
+  if (q_.size() == q_.capacity() && c.score() <= q_.min_score()) return;
+  q_.push(c);
+}
+
+std::vector<Clique> TopKManager::export_sorted() const { return q_.sorted_descending(); }
 
 CliqueContainer IncrementalEngine::initialize(const GraphSnapshot& g0, TimeId t0) const {
   return BKMaximalCliqueEnumerator::run(g0, t0, 1);
@@ -143,6 +153,9 @@ IncrementalEngine::StepResult IncrementalEngine::process_step(const GraphSnapsho
   }
 
   process_clique_relationships(ret.m_new, m_prev, ret.p_set, t, ret.p_emitted);
+  ret.m_new = inc_rmce(curr, delta.added_edges, t);
+
+  process_clique_relationships(ret.m_new, m_prev, ret.p_set, t);
 
   m_prev.for_each([&](const Clique& c) {
     if (!InvalidationUtils::is_invalidated(c, curr, delta)) ret.m_curr.add(c);
@@ -158,6 +171,7 @@ void IncrementalEngine::process_clique_relationships(
     std::unordered_set<std::string>& p_set,
     TimeId t,
     std::vector<Clique>& p_emitted) const {
+    TimeId t) const {
   m_new.for_each([&](Clique& c_new) {
     if (p_set.find(c_new.signature()) != p_set.end()) return;
 
@@ -170,6 +184,9 @@ void IncrementalEngine::process_clique_relationships(
         c_new.last_seen_at = t;
         p_set.insert(c_new.signature());
         p_emitted.push_back(c_new);
+        c_new.born_at = c_prev->born_at;
+        c_new.last_seen_at = t;
+        p_set.insert(c_new.signature());
         matched = true;
         break;
       }
@@ -291,3 +308,4 @@ std::vector<Clique> RefinedIncrementalTopK::run(const TemporalGraphDataset& data
 }
 
 }  // namespace temporal_topk
+

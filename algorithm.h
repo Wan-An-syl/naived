@@ -38,6 +38,7 @@ class TopKManager {
  private:
   std::size_t k_ = 0;
   std::unordered_map<std::string, Clique> best_by_signature_;
+  TopKBuffer q_;
 };
 
 class IncrementalEngine {
@@ -65,6 +66,7 @@ class IncrementalEngine {
                                     std::unordered_set<std::string>& p_set,
                                     TimeId t,
                                     std::vector<Clique>& p_emitted) const;
+                                    TimeId t) const;
 
  private:
   static std::vector<NodeId> intersect_with_neighbors(const std::vector<NodeId>& in,
@@ -85,3 +87,4 @@ class RefinedIncrementalTopK {
 };
 
 }  // namespace temporal_topk
+
