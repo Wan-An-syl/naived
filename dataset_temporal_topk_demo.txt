@@ -1,0 +1,33 @@
+# time_id node_u node_v
+# Snapshot t=0: maximal clique {1,2,3}
+0 1 2
+0 1 3
+0 2 3
+
+# Snapshot t=1: keep {1,2,3}, add node 4 and edges to expand to maximal clique {1,2,3,4}
+1 1 2
+1 1 3
+1 2 3
+1 1 4
+1 2 4
+1 3 4
+
+# Snapshot t=2: remove (1,3), keep edges producing maximal cliques {1,2,4} and {2,3,4}
+2 1 2
+2 2 3
+2 1 4
+2 2 4
+2 3 4
+
+# Snapshot t=3: remove node 4 connections; create new maximal clique {2,3,5}
+3 1 2
+3 2 3
+3 2 5
+3 3 5
+
+# Snapshot t=4: bring back edge (1,3) and keep {2,3,5}; maximal cliques include {1,2,3} and {2,3,5}
+4 1 2
+4 1 3
+4 2 3
+4 2 5
+4 3 5
