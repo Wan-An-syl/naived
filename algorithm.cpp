@@ -62,6 +62,7 @@ TopKManager::TopKManager(std::size_t k) : k_(k) {}
 
 void TopKManager::consider(const Clique& c) {
   if (k_ == 0) return;
+  if (c.size() < 3) return;
 
   const auto sig = c.signature();
   auto it = best_by_signature_.find(sig);
@@ -83,6 +84,13 @@ std::vector<Clique> TopKManager::export_sorted() const {
   }
 
   std::sort(all.begin(), all.end(),
+            [](const Clique& a, const Clique& b) {
+              if (a.score() != b.score()) return a.score() > b.score();
+              if (a.size() != b.size()) return a.size() > b.size();
+              if (a.born_at != b.born_at) return a.born_at < b.born_at;
+              if (a.last_seen_at != b.last_seen_at) return a.last_seen_at < b.last_seen_at;
+              return a.signature() > b.signature();
+            });
             [](const Clique& a, const Clique& b) { return a.score() > b.score(); });
 
   if (all.size() > k_) {
@@ -135,6 +143,16 @@ IncrementalEngine::StepResult IncrementalEngine::process_step(const GraphSnapsho
                                                               TimeId t) const {
   GraphDelta delta = GraphDeltaAnalyzer::diff(curr, prev);
   StepResult ret;
+
+  // If removals happen, new maximal cliques can emerge from split components;
+  // use full BK to keep semantics aligned with expected outputs.
+  if (!delta.removed_edges.empty() || !delta.removed_nodes.empty()) {
+    ret.m_new = BKMaximalCliqueEnumerator::run(curr, t, 1);
+  } else {
+    ret.m_new = inc_rmce(curr, delta.added_edges, t);
+  }
+
+  process_clique_relationships(ret.m_new, m_prev, ret.p_set, t, ret.p_emitted);
   ret.m_new = inc_rmce(curr, delta.added_edges, t);
 
   process_clique_relationships(ret.m_new, m_prev, ret.p_set, t);
@@ -151,6 +169,8 @@ void IncrementalEngine::process_clique_relationships(
     CliqueContainer& m_new,
     const CliqueContainer& m_prev,
     std::unordered_set<std::string>& p_set,
+    TimeId t,
+    std::vector<Clique>& p_emitted) const {
     TimeId t) const {
   m_new.for_each([&](Clique& c_new) {
     if (p_set.find(c_new.signature()) != p_set.end()) return;
@@ -160,6 +180,10 @@ void IncrementalEngine::process_clique_relationships(
          m_prev.candidates_by_size_range(1, static_cast<std::size_t>(-1))) {
       if (SetUtils::is_strict_subset(c_new, *c_prev)) {
         c_new.set_interval_count(c_prev->interval_count + 1);
+        c_new.born_at = t;
+        c_new.last_seen_at = t;
+        p_set.insert(c_new.signature());
+        p_emitted.push_back(c_new);
         c_new.born_at = c_prev->born_at;
         c_new.last_seen_at = t;
         p_set.insert(c_new.signature());
@@ -172,6 +196,13 @@ void IncrementalEngine::process_clique_relationships(
         c_new.last_seen_at = t;
         p_set.insert(c_new.signature());
         p_set.insert(c_prev->signature());
+
+        Clique prev_updated = *c_prev;
+        prev_updated.increment_interval_count(1);
+        prev_updated.last_seen_at = t;
+        p_emitted.push_back(prev_updated);
+        p_emitted.push_back(c_new);
+
         matched = true;
         break;
       }
@@ -182,6 +213,7 @@ void IncrementalEngine::process_clique_relationships(
       c_new.born_at = t;
       c_new.last_seen_at = t;
       p_set.insert(c_new.signature());
+      p_emitted.push_back(c_new);
     }
   });
 }
@@ -253,6 +285,10 @@ std::vector<Clique> RefinedIncrementalTopK::run(const TemporalGraphDataset& data
     IncrementalEngine::StepResult step = engine.process_step(curr_g, prev_g, m_prev, t);
 
     // Line 17-21: update I(c), compute F(c), and maintain Q
+    for (const auto& c : step.p_emitted) {
+      topk.consider(c);
+    }
+
     step.m_curr.for_each([&](Clique& c) {
       const auto sig = c.signature();
       if (step.p_set.find(sig) == step.p_set.end()) {

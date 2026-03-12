@@ -47,6 +47,7 @@ class IncrementalEngine {
     CliqueContainer m_new;
     CliqueContainer m_curr;
     std::unordered_set<std::string> p_set;
+    std::vector<Clique> p_emitted;
   };
 
   CliqueContainer initialize(const GraphSnapshot& g0, TimeId t0 = 0) const;
@@ -63,6 +64,8 @@ class IncrementalEngine {
   void process_clique_relationships(CliqueContainer& m_new,
                                     const CliqueContainer& m_prev,
                                     std::unordered_set<std::string>& p_set,
+                                    TimeId t,
+                                    std::vector<Clique>& p_emitted) const;
                                     TimeId t) const;
 
  private:
